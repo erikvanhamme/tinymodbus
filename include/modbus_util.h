@@ -18,6 +18,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "modbus_types.h"
+
 namespace modbus {
 
 std::uint16_t crc16(std::uint8_t *bytes, std::size_t length);
@@ -30,5 +32,9 @@ inline void writeWordBE(std::uint16_t value, std::uint8_t *bytes, std::size_t po
     bytes[position] = value >> 8;
     bytes[position + 1]  = value & 0xff;
 }
+
+bool isValidFunctionCodeValue(std::uint8_t fc);
+
+bool isBuiltInFunctionCode(FunctionCode fc);
 
 } // End namespace modbus.

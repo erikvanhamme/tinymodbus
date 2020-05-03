@@ -72,6 +72,7 @@ public:
     void freeResponse(Packet *packet);
 private:
     std::size_t _receivePdu(const std::uint8_t *pdu, std::size_t pdu_length, std::uint8_t *response_pdu, ArgType *arg);
+    std::size_t _unsupportedFc(const std::uint8_t *pdu, std::size_t pdu_length, std::uint8_t *response_pdu, ArgType *arg);
 
     Packet *_copyPacket(Packet *packet, ArgType *arg);
 

@@ -24,5 +24,6 @@ namespace modbus {
 
 void errorCallback(std::string message, ArgType *arg);
 void warningCallback(std::string message, ArgType *arg);
+bool isSupportedFunctionCallback(FunctionCode fc, ArgType *arg);
 
 } // End namespace modbus.

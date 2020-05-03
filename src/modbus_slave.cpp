@@ -168,9 +168,84 @@ std::size_t ModbusSlave::_receivePdu(const std::uint8_t *pdu, std::size_t pdu_le
         return 0;
     }
 
-    // TODO: Implement me.
+    std::uint8_t fc = pdu[0];
+    if (isValidFunctionCodeValue(fc) &&
+            ((isBuiltInFunctionCode(static_cast<FunctionCode>(fc))) || (isSupportedFunctionCallback(static_cast<FunctionCode>(fc), arg)))) {
 
-    return 0;
+        switch (fc) {
+        case READ_DISCRETE_INPUTS:
+            // TODO: Implement me.
+            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+        case READ_COILS:
+            // TODO: Implement me.
+            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+        case WRITE_SINGLE_COIL:
+            // TODO: Implement me.
+            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+        case WRITE_MULTIPLE_COILS:
+            // TODO: Implement me.
+            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+
+        case READ_INPUT_REGISTER:
+            // TODO: Implement me.
+            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+        case READ_HOLDING_REGISTERS:
+            // TODO: Implement me.
+            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+        case WRITE_SINGLE_REGISTER:
+            // TODO: Implement me.
+            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+        case WRITE_MULTIPLE_REGISTERS:
+            // TODO: Implement me.
+            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+        case READ_WRITE_MULTIPLE_REGISTERS:
+            // TODO: Implement me.
+            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+        case MASK_WRITE_REGISTER:
+            // TODO: Implement me.
+            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+        case READ_FIFO_QUEUE:
+            // TODO: Implement me.
+            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+
+        case READ_FILE_RECORD:
+            // TODO: Implement me.
+            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+        case WRITE_FILE_RECORD:
+            // TODO: Implement me.
+            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+
+        case READ_EXCEPTION_STATUS:
+            // TODO: Implement me.
+            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+        case DIAGNOSTIC:
+            // TODO: Implement me.
+            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+        case GET_COM_EVENT_COUNTER:
+            // TODO: Implement me.
+            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+        case GET_COM_EVENT_LOG:
+            // TODO: Implement me.
+            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+        case REPORT_SERVER_ID:
+            // TODO: Implement me.
+            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+        case READ_DEVICE_IDENTIFICATION: // TODO: Figure out how to deal with the 2 function codes in category other.
+            // TODO: Implement me.
+            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+        }
+    }
+
+    return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+}
+
+std::size_t ModbusSlave::_unsupportedFc(const std::uint8_t *pdu, std::size_t pdu_length, std::uint8_t *response_pdu, ArgType *arg) {
+    static_cast<void>(pdu_length);
+    static_cast<void>(arg);
+    std::uint8_t function_code = pdu[0];
+    response_pdu[0] = function_code + MODBUS_FUNCTION_CODE_ERROR_MASK;
+    response_pdu[1] = ExceptionCode::ILLEGAL_FUNCTION;
+    return 2;
 }
 
 Packet *ModbusSlave::_copyPacket(Packet *packet, ArgType *arg) {

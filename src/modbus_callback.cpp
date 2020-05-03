@@ -32,4 +32,10 @@ MODBUS_WEAK void warningCallback(std::string message, ArgType *arg) {
     static_cast<void>(arg);
 }
 
+MODBUS_WEAK bool isSupportedFunctionCallback(FunctionCode fc, ArgType *arg) {
+    static_cast<void>(fc);
+    static_cast<void>(arg);
+    return false;
+}
+
 } // End namespace modbus.

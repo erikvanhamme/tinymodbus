@@ -27,4 +27,37 @@ std::uint16_t crc16(std::uint8_t *bytes, std::size_t length) {
     return 0;
 }
 
+bool isValidFunctionCodeValue(std::uint8_t fc) {
+    switch (fc) {
+    case READ_DISCRETE_INPUTS: // Falls through.
+    case READ_COILS: // Falls through.
+    case WRITE_SINGLE_COIL: // Falls through.
+    case WRITE_MULTIPLE_COILS: // Falls through.
+    case READ_INPUT_REGISTER: // Falls through.
+    case READ_HOLDING_REGISTERS: // Falls through.
+    case WRITE_SINGLE_REGISTER: // Falls through.
+    case WRITE_MULTIPLE_REGISTERS: // Falls through.
+    case READ_WRITE_MULTIPLE_REGISTERS: // Falls through.
+    case MASK_WRITE_REGISTER: // Falls through.
+    case READ_FIFO_QUEUE: // Falls through.
+    case READ_FILE_RECORD: // Falls through.
+    case WRITE_FILE_RECORD: // Falls through.
+    case READ_EXCEPTION_STATUS: // Falls through.
+    case DIAGNOSTIC: // Falls through.
+    case GET_COM_EVENT_COUNTER: // Falls through.
+    case GET_COM_EVENT_LOG: // Falls through.
+    case REPORT_SERVER_ID: // Falls through.
+    case READ_DEVICE_IDENTIFICATION:
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool isBuiltInFunctionCode(FunctionCode fc) {
+    // TODO: Implement me.
+    static_cast<void>(fc);
+    return false;
+}
+
 } // End namespace modbus.
