@@ -33,133 +33,148 @@ ModbusSlave::ModbusSlave(std::uint8_t slave_id, ArgType *arg) : _slave_id(slave_
 }
 
 Packet *ModbusSlave::receiveAdu(Packet *packet, ArgType *arg, bool stable) {
-    if (packet == nullptr) {
-        errorCallback("Modbus slave: nullptr packet.", arg);
-        return nullptr;
-    }
+    Packet *response = nullptr;
+    auto error = true;
 
-    if (packet->length < MODBUS_ADU_SIZE_MIN) {
-        errorCallback("Modbus slave: runt ADU received.", arg);
-        return nullptr;
-    }
-
-    if (! stable) {
-        packet = _copyPacket(packet, arg);
+    do {
         if (packet == nullptr) {
-            return nullptr;
+            errorCallback("Modbus slave: nullptr packet.", arg);
+            break;
         }
-    }
 
-    auto crc16_calc = crc16(packet->bytes, packet->length - 2);
-    auto crc16_recv = readWordBE(packet->bytes, packet->length - 2);
-    if (crc16_recv != crc16_calc) {
+        if (packet->length < MODBUS_ADU_SIZE_MIN) {
+            errorCallback("Modbus slave: runt ADU received.", arg);
+            break;
+        }
+
         if (! stable) {
-            _pool.free(packet, arg);
+            packet = _copyPacket(packet, arg);
+            if (packet == nullptr) {
+                break;
+            }
         }
-        return nullptr;
+
+        auto crc16_calc = crc16(packet->bytes, packet->length - 2);
+        auto crc16_recv = readWordBE(packet->bytes, packet->length - 2);
+        if (crc16_recv != crc16_calc) {
+            break;
+        }
+
+        std::uint8_t unit_id = packet->bytes[0];
+        if ((unit_id != _slave_id) && (unit_id != 255)) {
+            break;
+        }
+
+        response = _pool.allocate(arg);
+        if (response == nullptr) {
+            break;
+        }
+
+        auto response_length = _receivePdu(
+                    packet->bytes + MODBUS_ADU_OVERHEAD,
+                    packet->length - MODBUS_ADU_OVERHEAD,
+                    response->bytes + MODBUS_ADU_OVERHEAD,
+                    arg);
+        if (response_length == 0) {
+            break;
+        }
+
+        response->bytes[0] = unit_id;
+        crc16_calc = crc16(response->bytes, response_length + 1);
+        writeWordBE(crc16_calc, response->bytes, response_length + 1);
+        response->length = response_length + MODBUS_ADU_OVERHEAD;
+
+        error = false;
+    } while (false);
+
+    if ((! stable) && (packet != nullptr)) {
+        packet = _pool.free(packet, arg);
     }
 
-    std::uint8_t unit_id = packet->bytes[0];
-    if ((unit_id != _slave_id) && (unit_id != 255)) {
-        if (! stable) {
-            _pool.free(packet, arg);
-        }
-        return nullptr;
+    if ((error) && (response != nullptr)) {
+        response = _pool.free(response, arg);
     }
-
-    auto response = _pool.allocate(arg);
-    if (response == nullptr) {
-        if (! stable) {
-            _pool.free(packet, arg);
-        }
-        return nullptr;
-    }
-
-    auto response_length = _receivePdu(
-                packet->bytes + MODBUS_ADU_OVERHEAD,
-                packet->length - MODBUS_ADU_OVERHEAD,
-                response->bytes + MODBUS_ADU_OVERHEAD,
-                arg);
-    if (response_length == 0) {
-        if (! stable) {
-            _pool.free(packet, arg);
-        }
-        return nullptr;
-    }
-
-    response->bytes[0] = unit_id;
-    crc16_calc = crc16(response->bytes, response_length + 1);
-    writeWordBE(crc16_calc, response->bytes, response_length + 1);
-    response->length = response_length + MODBUS_ADU_OVERHEAD;
 
     return response;
 }
 
 Packet *ModbusSlave::receiveMbap(Packet *packet, ArgType *arg, bool stable) {
-    if (packet == nullptr) {
-        errorCallback("Modbus slave: nullptr packet.", arg);
-        return nullptr;
-    }
+    Packet *response = nullptr;
+    auto error = true;
 
-    if (packet->length < MODBUS_MBAP_SIZE_MIN) {
-        errorCallback("Modbus slave: runt MBAP received.", arg);
-        return nullptr;
-    }
-
-    if (! stable) {
-        packet = _copyPacket(packet, arg);
+    do {
         if (packet == nullptr) {
-            return nullptr;
+            errorCallback("Modbus slave: nullptr packet.", arg);
+            break;
         }
-    }
 
-    std::uint16_t transaction_id = readWordBE(packet->bytes, 0);
+        if (packet->length < MODBUS_MBAP_SIZE_MIN) {
+            errorCallback("Modbus slave: runt MBAP received.", arg);
+            break;
+        }
 
-    std::uint16_t protocol_id = readWordBE(packet->bytes, 2);
-    if (protocol_id != 0) {
-        warningCallback("Modbus slave: MBAP protocol_id != 0.", arg);
-    }
-
-    std::uint16_t length = readWordBE(packet->bytes, 4);
-    if (length != (packet->length - 6)) {
-        warningCallback("Modbus slave: MBAP incorrect length in MBAP header.", arg);
-    }
-
-    std::uint8_t unit_id = packet->bytes[6];
-    if ((unit_id != _slave_id) && (unit_id != 255)) {
         if (! stable) {
-            _pool.free(packet, arg);
+            packet = _copyPacket(packet, arg);
+            if (packet == nullptr) {
+                break;
+            }
         }
-        return nullptr;
+
+        std::uint16_t transaction_id = readWordBE(packet->bytes, 0);
+
+        std::uint16_t protocol_id = readWordBE(packet->bytes, 2);
+        if (protocol_id != 0) {
+            warningCallback("Modbus slave: MBAP protocol_id != 0.", arg);
+        }
+
+        std::uint16_t length = readWordBE(packet->bytes, 4);
+        if (length != (packet->length - 6)) {
+            warningCallback("Modbus slave: MBAP incorrect length in MBAP header.", arg);
+        }
+
+        std::uint8_t unit_id = packet->bytes[6];
+        if ((unit_id != _slave_id) && (unit_id != 255)) {
+            break;
+        }
+
+        response = _pool.allocate(arg);
+        if (response == nullptr) {
+            break;
+        }
+
+        auto response_length = _receivePdu(
+                    packet->bytes + MODBUS_MBAP_OVERHEAD,
+                    packet->length - MODBUS_MBAP_OVERHEAD,
+                    response->bytes + MODBUS_MBAP_OVERHEAD,
+                    arg);
+        if (response_length == 0) {
+            break;
+        }
+
+        writeWordBE(transaction_id, response->bytes, 0);
+        writeWordBE(protocol_id, response->bytes, 2);
+        writeWordBE(response_length + 1, response->bytes, 4);
+        response->bytes[6] = unit_id;
+        response->length = response_length + MODBUS_MBAP_OVERHEAD;
+
+        error = false;
+    } while (false);
+
+    if ((! stable) && (packet != nullptr)) {
+        packet = _pool.free(packet, arg);
     }
 
-    auto response = _pool.allocate(arg);
-    if (response == nullptr) {
-        if (! stable) {
-            _pool.free(packet, arg);
-        }
-        return nullptr;
+    if ((error) && (response != nullptr)) {
+        response = _pool.free(response, arg);
     }
-
-    auto response_length = _receivePdu(
-                packet->bytes + MODBUS_MBAP_OVERHEAD,
-                packet->length - MODBUS_MBAP_OVERHEAD,
-                response->bytes + MODBUS_MBAP_OVERHEAD,
-                arg);
-    if (response_length == 0) {
-        if (! stable) {
-            _pool.free(packet, arg);
-        }
-        return nullptr;
-    }
-
-    writeWordBE(transaction_id, response->bytes, 0);
-    writeWordBE(protocol_id, response->bytes, 2);
-    writeWordBE(response_length + 1, response->bytes, 4);
-    response->bytes[6] = unit_id;
-    response->length = response_length + MODBUS_MBAP_OVERHEAD;
 
     return response;
+}
+
+void ModbusSlave::freeResponse(Packet *packet, ArgType *arg) {
+    if (packet != nullptr) {
+        _pool.free(packet, arg);
+    }
 }
 
 std::size_t ModbusSlave::_receivePdu(const std::uint8_t *pdu, std::size_t pdu_length, std::uint8_t *response_pdu, ArgType *arg) {
@@ -172,79 +187,106 @@ std::size_t ModbusSlave::_receivePdu(const std::uint8_t *pdu, std::size_t pdu_le
     if (isValidFunctionCodeValue(fc) &&
             ((isBuiltInFunctionCode(static_cast<FunctionCode>(fc))) || (isSupportedFunctionCallback(static_cast<FunctionCode>(fc), arg)))) {
 
+        response_pdu[0] = pdu[0];
+
         switch (fc) {
         case READ_DISCRETE_INPUTS:
             // TODO: Implement me.
-            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+            return _exception(ExceptionCode::ILLEGAL_FUNCTION, response_pdu);
         case READ_COILS:
             // TODO: Implement me.
-            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+            return _exception(ExceptionCode::ILLEGAL_FUNCTION, response_pdu);
         case WRITE_SINGLE_COIL:
             // TODO: Implement me.
-            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+            return _exception(ExceptionCode::ILLEGAL_FUNCTION, response_pdu);
         case WRITE_MULTIPLE_COILS:
             // TODO: Implement me.
-            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+            return _exception(ExceptionCode::ILLEGAL_FUNCTION, response_pdu);
 
         case READ_INPUT_REGISTER:
             // TODO: Implement me.
-            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+            return _exception(ExceptionCode::ILLEGAL_FUNCTION, response_pdu);
         case READ_HOLDING_REGISTERS:
-            // TODO: Implement me.
-            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+            return _readHoldingRegisters(pdu, pdu_length, response_pdu, arg);
         case WRITE_SINGLE_REGISTER:
             // TODO: Implement me.
-            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+            return _exception(ExceptionCode::ILLEGAL_FUNCTION, response_pdu);
         case WRITE_MULTIPLE_REGISTERS:
             // TODO: Implement me.
-            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+            return _exception(ExceptionCode::ILLEGAL_FUNCTION, response_pdu);
         case READ_WRITE_MULTIPLE_REGISTERS:
             // TODO: Implement me.
-            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+            return _exception(ExceptionCode::ILLEGAL_FUNCTION, response_pdu);
         case MASK_WRITE_REGISTER:
             // TODO: Implement me.
-            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+            return _exception(ExceptionCode::ILLEGAL_FUNCTION, response_pdu);
         case READ_FIFO_QUEUE:
             // TODO: Implement me.
-            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+            return _exception(ExceptionCode::ILLEGAL_FUNCTION, response_pdu);
 
         case READ_FILE_RECORD:
             // TODO: Implement me.
-            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+            return _exception(ExceptionCode::ILLEGAL_FUNCTION, response_pdu);
         case WRITE_FILE_RECORD:
             // TODO: Implement me.
-            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+            return _exception(ExceptionCode::ILLEGAL_FUNCTION, response_pdu);
 
         case READ_EXCEPTION_STATUS:
             // TODO: Implement me.
-            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+            return _exception(ExceptionCode::ILLEGAL_FUNCTION, response_pdu);
         case DIAGNOSTIC:
             // TODO: Implement me.
-            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+            return _exception(ExceptionCode::ILLEGAL_FUNCTION, response_pdu);
         case GET_COM_EVENT_COUNTER:
             // TODO: Implement me.
-            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+            return _exception(ExceptionCode::ILLEGAL_FUNCTION, response_pdu);
         case GET_COM_EVENT_LOG:
             // TODO: Implement me.
-            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+            return _exception(ExceptionCode::ILLEGAL_FUNCTION, response_pdu);
         case REPORT_SERVER_ID:
             // TODO: Implement me.
-            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+            return _exception(ExceptionCode::ILLEGAL_FUNCTION, response_pdu);
         case READ_DEVICE_IDENTIFICATION: // TODO: Figure out how to deal with the 2 function codes in category other.
             // TODO: Implement me.
-            return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+            return _exception(ExceptionCode::ILLEGAL_FUNCTION, response_pdu);
         }
     }
 
-    return _unsupportedFc(pdu, pdu_length, response_pdu, arg);
+    return _exception(ExceptionCode::ILLEGAL_FUNCTION, response_pdu);
 }
 
-std::size_t ModbusSlave::_unsupportedFc(const std::uint8_t *pdu, std::size_t pdu_length, std::uint8_t *response_pdu, ArgType *arg) {
-    static_cast<void>(pdu_length);
-    static_cast<void>(arg);
-    std::uint8_t function_code = pdu[0];
-    response_pdu[0] = function_code + MODBUS_FUNCTION_CODE_ERROR_MASK;
-    response_pdu[1] = ExceptionCode::ILLEGAL_FUNCTION;
+std::size_t ModbusSlave::_readHoldingRegisters(const std::uint8_t *pdu, std::size_t pdu_length, std::uint8_t *response_pdu, ArgType *arg) {
+    if (pdu_length != 5) {
+        errorCallback("Modbus slave: incorrect PDU length for READ_HOLDING_REGISTERS.", arg);
+        return 0;
+    }
+
+    auto quantity = readWordBE(pdu, 3);
+    if ((quantity == 0) || (quantity >= 0x7d)) {
+        return _exception(ExceptionCode::ILLEGAL_DATA_VALUE, response_pdu);
+    }
+
+    auto address_from = readWordBE(pdu, 1);
+    auto address_to = address_from + quantity;
+    if (! (isHoldingRegisterAddressInRangeCallback(address_from, arg) && isHoldingRegisterAddressInRangeCallback(address_to, arg))) {
+        return _exception(ExceptionCode::ILLEGAL_DATA_ADDRESS, response_pdu);
+    }
+
+    response_pdu[1] = quantity * 2;
+
+    std::size_t position = 2;
+    for (std::uint16_t address = address_from; address < address_to; ++address) {
+        auto value = readHoldingRegisterCallback(address, arg);
+        writeWordBE(value, response_pdu, position);
+        position += 2;
+    }
+
+    return position;
+}
+
+std::size_t ModbusSlave::_exception(std::uint8_t exception_code, std::uint8_t *response_pdu) {
+    response_pdu[0] |= MODBUS_FUNCTION_CODE_ERROR_MASK;
+    response_pdu[1] = exception_code;
     return 2;
 }
 

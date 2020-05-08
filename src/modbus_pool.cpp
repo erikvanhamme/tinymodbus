@@ -45,20 +45,22 @@ Packet *PacketPool::allocate(ArgType *arg) {
     return nullptr;
 }
 
-void PacketPool::free(Packet *packet, ArgType *arg) {
+Packet *PacketPool::free(Packet *packet, ArgType *arg) {
     if (packet == nullptr) {
         errorCallback("Packet pool: attempt to free nullptr.", arg);
 
-        return;
+        return nullptr;
     }
 
     auto idx = _findIndex(packet);
     if (idx != -1) {
         _allocated.reset(idx);
-        return;
+        return nullptr;
     }
 
     errorCallback("Packet pool: attempt to free unmanaged memory.", arg);
+
+    return packet;
 }
 
 int PacketPool::_findFree() {

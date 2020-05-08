@@ -68,11 +68,14 @@ public:
      * @brief freeResponse Frees the response packet on the internal memory pool.
      *
      * @param[in] packet Pointer to the packet to be freed.
+     * @param[in] arg User argument, will be passed through to callback.
      */
-    void freeResponse(Packet *packet);
+    void freeResponse(Packet *packet, ArgType *arg);
 private:
     std::size_t _receivePdu(const std::uint8_t *pdu, std::size_t pdu_length, std::uint8_t *response_pdu, ArgType *arg);
-    std::size_t _unsupportedFc(const std::uint8_t *pdu, std::size_t pdu_length, std::uint8_t *response_pdu, ArgType *arg);
+    std::size_t _readHoldingRegisters(const std::uint8_t *pdu, std::size_t pdu_length, std::uint8_t *response_pdu, ArgType *arg);
+
+    std::size_t _exception(std::uint8_t exception_code, std::uint8_t *response_pdu);
 
     Packet *_copyPacket(Packet *packet, ArgType *arg);
 

@@ -29,7 +29,7 @@ class PacketPool {
 public:
     PacketPool();
     Packet *allocate(ArgType *arg);
-    void free(Packet *packet, ArgType *arg);
+    Packet *free(Packet *packet, ArgType *arg);
 private:
     int _findFree();
     int _findIndex(Packet *packet);

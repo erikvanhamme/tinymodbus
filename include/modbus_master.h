@@ -18,23 +18,21 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "modbus_opt.h"
+#include "modbus_pool.h"
 #include "modbus_types.h"
 
 namespace modbus {
 
-inline std::uint16_t readWordBE(const std::uint8_t *bytes, std::size_t position) {
-    return (static_cast<std::uint16_t>(bytes[position]) << 8) + bytes[position + 1];
-}
+class ModbusMaster {
+public:
+    Packet *allocateResponse(ArgType *arg);
+    Packet *readHoldingRegistersAdu(std::uint8_t slave_id, std::uint16_t address, std::uint16_t quantity, ArgType *arg);
+    Packet *readHoldingRegistersMbap(std::uint8_t slave_id, std::uint16_t address, std::uint16_t quantity, ArgType *arg);
 
-inline void writeWordBE(std::uint16_t value, std::uint8_t *bytes, std::size_t position) {
-    bytes[position] = value >> 8;
-    bytes[position + 1]  = value & 0xff;
-}
-
-std::uint16_t crc16(const std::uint8_t *bytes, std::size_t length, bool *error = nullptr);
-
-bool isValidFunctionCodeValue(std::uint8_t fc);
-
-bool isBuiltInFunctionCode(FunctionCode fc);
+    void freePacket(Packet *packet, ArgType *arg);
+private:
+    PacketPool _pool;
+};
 
 } // End namespace modbus.

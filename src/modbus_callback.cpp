@@ -38,4 +38,16 @@ MODBUS_WEAK bool isSupportedFunctionCallback(FunctionCode fc, ArgType *arg) {
     return false;
 }
 
+MODBUS_WEAK bool isHoldingRegisterAddressInRangeCallback(std::uint16_t address, ArgType *arg) {
+    static_cast<void>(address);
+    static_cast<void>(arg);
+    return false;
+}
+
+MODBUS_WEAK std::uint16_t readHoldingRegisterCallback(std::uint16_t address, ArgType *arg) {
+    static_cast<void>(address);
+    static_cast<void>(arg);
+    return 0;
+}
+
 } // End namespace modbus.

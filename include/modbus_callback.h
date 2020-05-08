@@ -26,4 +26,7 @@ void errorCallback(std::string message, ArgType *arg);
 void warningCallback(std::string message, ArgType *arg);
 bool isSupportedFunctionCallback(FunctionCode fc, ArgType *arg);
 
+bool isHoldingRegisterAddressInRangeCallback(std::uint16_t address, ArgType *arg);
+std::uint16_t readHoldingRegisterCallback(std::uint16_t address, ArgType *arg);
+
 } // End namespace modbus.
